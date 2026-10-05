@@ -3,7 +3,7 @@ Logic Gate &amp; K-Map Simplifier is an interactive web-based application design
 # ⚡ Logic Gate & K-Map Simplifier ## 🚀 PROJECT
 ## 🚀 LIVE DEMO
 
-👉 **[CLICK HERE TO OPEN THE LOGIC GATE & K-MAP SIMPLIFIER](https://nishantkamalesh28-cyber.github.io/LOGIC-GATE-AND-K-MAP-SIMPLIFIER/)**
+https://nishantkamalesh28-cyber.github.io/LOGIC-GATE-AND-K-MAP-SIMPLIFIER/
 
 ---
 
