@@ -2,7 +2,8 @@
 Logic Gate &amp; K-Map Simplifier is an interactive web-based application designed to help students understand and practice Digital Logic Design concepts
 # ⚡ Logic Gate & K-Map Simplifier ## 🚀 PROJECT
 ## 🚀 LIVE DEMO
-https://nishantkamalesh28-cyber.github.io/LOGIC-GATE-AND-K-MAP-SIMPLIFIER/
+
+   https://nishantkamalesh28-cyber.github.io/LOGIC-GATE-AND-K-MAP-SIMPLIFIER/
 
 ---
 
