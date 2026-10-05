@@ -1,0 +1,239 @@
+const gateFns={
+  AND:(a,b)=>a&b,
+  OR:(a,b)=>a|b,
+  NOT:a=>!a?1:0,
+  NAND:(a,b)=>(!(a&b))?1:0,
+  NOR:(a,b)=>(!(a|b))?1:0,
+  XOR:(a,b)=>a^b,
+  XNOR:(a,b)=>a===b?1:0
+};
+
+function updateSim(){
+  let g=document.getElementById('gate').value,
+      a=+document.getElementById('a').checked,
+      b=+document.getElementById('b').checked;
+
+  document.getElementById('bwrap').style.display=g==='NOT'?'none':'flex';
+
+  let o=gateFns[g](a,b);
+  document.getElementById('out').textContent=o;
+
+  let sym={
+    AND:'·',
+    OR:' + ',
+    NOT:"'",
+    NAND:" NAND ",
+    NOR:" NOR ",
+    XOR:' ⊕ ',
+    XNOR:' ⊙ '
+  }[g];
+
+  document.getElementById('expr').textContent=
+    g==='NOT'?`A' = ${o}`:`A ${sym} B = ${o}`;
+
+  let rows=g==='NOT'
+    ?[[0,gateFns[g](0)],[1,gateFns[g](1)]]
+    :[[0,0,gateFns[g](0,0)],[0,1,gateFns[g](0,1)],
+      [1,0,gateFns[g](1,0)],[1,1,gateFns[g](1,1)]];
+
+  document.getElementById('truthBox').innerHTML=
+    '<table class="truth"><tr><th>A</th>'+
+    (g==='NOT'?'':'<th>B</th>')+
+    '<th>F</th></tr>'+
+    rows.map(r=>'<tr>'+r.map(x=>`<td>${x}</td>`).join('')+'</tr>').join('')+
+    '</table>';
+}
+
+updateSim();
+
+function buildMinterms(){
+  let n=+document.getElementById('vars').value,
+      N=2**n,
+      box=document.getElementById('minterms');
+
+  box.innerHTML='';
+
+  for(let i=0;i<N;i++){
+    let d=document.createElement('button');
+    d.className='minterm';
+    d.textContent=i;
+    d.dataset.i=i;
+    d.onclick=()=>d.classList.toggle('on');
+    box.appendChild(d);
+  }
+
+  renderKmap();
+}
+
+function selected(){
+  return [...document.querySelectorAll('.minterm.on')]
+    .map(x=>+x.dataset.i)
+    .sort((a,b)=>a-b);
+}
+
+function gray(n){
+  return n===2?[0,1,3,2]:[0,1,3,2];
+}
+
+function renderKmap(){
+  let n=+document.getElementById('vars').value,
+      ms=selected();
+
+  if(n===2){
+    document.getElementById('kmapGrid').innerHTML=
+      '<div class="kmap" style="grid-template-columns:repeat(2,55px)">'+
+      [0,1,3,2].map(i=>
+        `<div class="cell ${ms.includes(i)?'one':''}">${i}</div>`
+      ).join('')+
+      '</div>';
+    return;
+  }
+
+  if(n===3){
+    let rows=[0,1,3,2],cols=[0,1];
+
+    document.getElementById('kmapGrid').innerHTML=
+      '<div class="kmap" style="grid-template-columns:repeat(2,55px)">'+
+      rows.flatMap(r=>cols.map(c=>{
+        let m=(r<<1)|c;
+        return `<div class="cell ${ms.includes(m)?'one':''}">${m}</div>`;
+      })).join('')+
+      '</div>';
+    return;
+  }
+
+  let rows=[0,1,3,2],
+      cols=[0,1,3,2],
+      s='<div class="kmap" style="grid-template-columns:repeat(4,55px)">';
+
+  rows.forEach(r=>cols.forEach(c=>{
+    let m=(r<<2)|c;
+    s+=`<div class="cell ${ms.includes(m)?'one':''}">${m}</div>`;
+  }));
+
+  s+='</div>';
+  document.getElementById('kmapGrid').innerHTML=s;
+}
+
+function loadExample(){
+  let v=document.getElementById('example').value;
+  if(!v)return;
+
+  let sets={
+    1:[1,3,5,7],
+    2:[0,2,8,10],
+    3:[1,3,7,9,11,15]
+  };
+
+  document.querySelectorAll('.minterm').forEach(x=>
+    x.classList.toggle('on',sets[v].includes(+x.dataset.i))
+  );
+
+  renderKmap();
+  simplify();
+}
+
+function qm(mins,n){
+  if(!mins.length)return '0';
+  if(mins.length===2**n)return '1';
+
+  let terms=mins.map(m=>({
+    bits:m.toString(2).padStart(n,'0'),
+    mins:[m]
+  }));
+
+  let prime=[];
+  let changed=true;
+
+  while(changed){
+    changed=false;
+    let used=new Set(),next=[];
+
+    for(let i=0;i<terms.length;i++)
+      for(let j=i+1;j<terms.length;j++){
+        let a=terms[i].bits,b=terms[j].bits,d=0,pos=-1;
+
+        for(let k=0;k<n;k++)
+          if(a[k]!==b[k])
+            if(a[k]!=='-'&&b[k]!=='-'){
+              d++;
+              pos=k;
+            }
+
+        if(d===1){
+          let bits=a.split('');
+          bits[pos]='-';
+
+          let key=bits.join('');
+
+          if(!next.some(x=>x.bits===key))
+            next.push({
+              bits:key,
+              mins:[...new Set([...terms[i].mins,...terms[j].mins])]
+            });
+
+          used.add(i);
+          used.add(j);
+          changed=true;
+        }
+      }
+
+    terms.forEach((t,i)=>{
+      if(!used.has(i)&&!prime.some(p=>p.bits===t.bits))
+        prime.push(t);
+    });
+
+    terms=next;
+  }
+
+  terms.forEach(t=>{
+    if(!prime.some(p=>p.bits===t.bits))
+      prime.push(t);
+  });
+
+  let uncovered=new Set(mins),
+      chosen=[];
+
+  while(uncovered.size){
+    let best=prime
+      .filter(p=>p.mins.some(m=>uncovered.has(m)))
+      .sort((a,b)=>
+        b.mins.filter(m=>uncovered.has(m)).length-
+        a.mins.filter(m=>uncovered.has(m)).length
+      )[0];
+
+    if(!best)break;
+
+    chosen.push(best);
+    best.mins.forEach(m=>uncovered.delete(m));
+  }
+
+  const names='ABCD'.slice(0,n);
+
+  return chosen
+    .map(t=>t.bits.split('').map((x,i)=>
+      x==='-'?'':x==='1'?names[i]:names[i]+"'"
+    ).join(''))
+    .join(' + ')||'0';
+}
+
+function simplify(){
+  let n=+document.getElementById('vars').value,
+      ms=selected();
+
+  renderKmap();
+
+  let ans=qm(ms,n);
+
+  document.getElementById('answer').textContent=ans;
+
+  document.getElementById('steps').innerHTML=
+    ms.length
+      ?`<li>Selected minterms: Σm(${ms.join(', ')})</li>
+        <li>Adjacent 1s are combined into power-of-two groups.</li>
+        <li>Common variables are retained; changing variables are eliminated.</li>
+        <li>Final simplified expression: <b>${ans}</b></li>`
+      :'<li>Select at least one minterm.</li>';
+}
+
+buildMinterms();
